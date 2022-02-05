@@ -39,10 +39,19 @@ app.get('/', (req, res, next) => {
 
 //gets data from specified name and daterange
 app.get('/api/daterange', (req, res, next) => {
+
+    //wrap function in try/catch for add'l error handling, returns 400 Bad Request
+    try{
     
     var name = req.query.name;
     var start = req.query.start;
     var end = req.query.end;
+
+    //catches bad date format errors and returns 400 code
+    if(start.length!=6 | end.length != 6){
+        res.end('400 Bad Request');
+        return;
+    }
 
     //convert user input dates to same format as datelist (e.g. from 012001 to Jan-01)
     start=months[parseInt(start.slice(0,2))-1]+'-'+start.slice(-2)
@@ -63,14 +72,17 @@ app.get('/api/daterange', (req, res, next) => {
 
     //select data from db using mod_datelist as filter
     db.all(command,[],(err, rows ) => {
-        if (err) {throw err;}
+        if (err) {                          //error handling - bad SQL requests will return 400 code and return w/o crashing server.
+            console.log(err);
+            res.end('400 Bad Request');
+            return}
             rows.forEach((row) => {
                 output.push(row);
             }); 
             
             //check if data is empty (invalid request)
             if(output.length===0){
-                res.end('Invalid request or no data available for that daterange.');
+                res.end('Invalid request: No data available for that daterange.');
             }
             
             //if data not empty (valid request), send as response
@@ -80,6 +92,10 @@ app.get('/api/daterange', (req, res, next) => {
                 res.end(output) // have to use .end instead of .send to pretty-print JSON
             };
     });
+
+    } catch(error){
+        res.end('400 Bad Request')
+    }
 
 
     
